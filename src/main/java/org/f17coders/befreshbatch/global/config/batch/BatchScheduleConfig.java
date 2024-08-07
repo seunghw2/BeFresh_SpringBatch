@@ -7,16 +7,20 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 @Slf4j
 @Configuration
-//@EnableScheduling
+@EnableScheduling
 @RequiredArgsConstructor
 public class BatchScheduleConfig {
+
     private final JobLauncher jobLauncher;
     private final FoodExpireBatchConfig foodExpireBatchConfig;
 
     //    @Scheduled(cron = "0 0 9 * * ?") // 매일 오전 9시에 실행
+    @Scheduled(cron = "0 0/1 * * * ?") // 매 1분마다 실행
     public void runExpiredFoodJob() {
         runJob(foodExpireBatchConfig.processExpiredFoodJob(), "processExpiredFoodJob");
     }

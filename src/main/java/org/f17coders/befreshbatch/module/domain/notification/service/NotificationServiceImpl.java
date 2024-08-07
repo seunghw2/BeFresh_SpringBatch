@@ -4,8 +4,6 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +27,8 @@ public class NotificationServiceImpl implements NotificationService {
         String body = "";
 
         for (Food food : foodList) {
-            title = "[" + food.getName() + "] " + " 상태가 되었어요!";
-            body = "[유통 기한 D+" + ChronoUnit.DAYS.between(food.getExpirationDate(), LocalDate.now())
-                + "]";
-            if (category.equals("danger")) {
-                body += " 주의해서 먹으세요!";
-            }
+            title = "[" + food.getName() + "] " + " 유통기한이 지났어요!";
+            body = "주의해서 먹으세요!";
 
             long notificationId = saveMessage(food.getRefrigerator(), category, title, body);
             Member member = food.getRefrigerator().getMember();

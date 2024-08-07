@@ -32,7 +32,7 @@ public class FoodExpireBatchConfig {
     public Job processExpiredFoodJob() {
         return new JobBuilder("processExpiredFoodJob", jobRepository)
                 .start(findExpireFoodStep())
-                .next(updateFoodRefreshStep())
+                .next(updateFoodFreshnessStep())
                 .next(sendExpireNotificationStep())
                 .build();
     }
@@ -41,12 +41,12 @@ public class FoodExpireBatchConfig {
     public Step findExpireFoodStep() {
         return new StepBuilder("findExpireFoodStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
-                    log.info("dangerFoodIdList");
                     ExecutionContext jobExecutionContext = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
 
-                    List<Long> dangerFoodIdList = foodRepository.findDangerFood();
+                    List<Long> expireFoodIdList = foodRepository.findExpireFood();
+                    log.info("[findExpireFoodStep] found expire food size : " + String.valueOf(expireFoodIdList.size()));
 
-                    jobExecutionContext.put("dangerFoodIdList", dangerFoodIdList);
+                    jobExecutionContext.put("expireFoodIdList", expireFoodIdList);
 
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
@@ -54,15 +54,17 @@ public class FoodExpireBatchConfig {
     }
 
     @Bean
-    public Step updateFoodRefreshStep() {
-        return new StepBuilder("updateFoodRefreshStep", jobRepository)
+    public Step updateFoodFreshnessStep() {
+        return new StepBuilder("updateFoodFreshnessStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
                     ExecutionContext jobExecutionContext = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
 
-                    List<Long> dangerFoodIdList = (List<Long>) jobExecutionContext.get("dangerFoodIdList");
+                    List<Long> expireFoodIdList = (List<Long>) jobExecutionContext.get("expireFoodIdList");
 
-                    List<Food> dangerFoodList = foodRepository.findUpdateFood(dangerFoodIdList);
-                    for (Food food : dangerFoodList) {
+                    log.info("[updateFoodFreshnessStep] found expire food size : " + String.valueOf(expireFoodIdList.size()));
+
+                    List<Food> expireFoodList = foodRepository.findUpdateFood(expireFoodIdList);
+                    for (Food food : expireFoodList) {
                         foodRepository.save(food);
                     }
 
@@ -77,11 +79,12 @@ public class FoodExpireBatchConfig {
                 .tasklet((contribution, chunkContext) -> {
                     ExecutionContext jobExecutionContext = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
 
-                    List<Long> dangerFoodIdList = (List<Long>) jobExecutionContext.get("dangerFoodIdList");
+                    List<Long> expireFoodIdList = (List<Long>) jobExecutionContext.get("expireFoodIdList");
+                    log.info("[sendExpireNotificationStep] found expire food size : " + String.valueOf(expireFoodIdList.size()));
 
-                    List<Food> dangerFoodList = foodRepository.findNotiFood(dangerFoodIdList);
+                    List<Food> expireFoodList = foodRepository.findNotiFood(expireFoodIdList);
 
-                    notificationService.sendExpireNotification(dangerFoodList, "danger");
+                    notificationService.sendExpireNotification(expireFoodList, "danger");
 
                     return RepeatStatus.FINISHED;
                 }, transactionManager)

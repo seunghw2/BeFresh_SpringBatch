@@ -22,7 +22,7 @@ public class FoodRepositoryImpl implements FoodRepositoryCustom {
     }
 
     @Override
-    public List<Long> findDangerFood(){
+    public List<Long> findExpireFood(){
         return queryFactroy
                 .select(food.id)
                 .from(food)
