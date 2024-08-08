@@ -17,12 +17,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class BatchScheduleConfig {
 
     private final JobLauncher jobLauncher;
-    private final FoodExpireBatchConfig foodExpireBatchConfig;
+    private final Job processExpiredFoodJob;
 
     //    @Scheduled(cron = "0 0 9 * * ?") // 매일 오전 9시에 실행
     @Scheduled(cron = "0 0/1 * * * ?") // 매 1분마다 실행
     public void runExpiredFoodJob() {
-        runJob(foodExpireBatchConfig.processExpiredFoodJob(), "processExpiredFoodJob");
+        runJob(processExpiredFoodJob, "processExpiredFoodJob");
     }
 
     private void runJob(Job job, String jobName) {
@@ -37,11 +37,3 @@ public class BatchScheduleConfig {
         }
     }
 }
-
-
-
-
-
-
-
-
