@@ -5,9 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f17coders.befreshbatch.module.domain.food.Food;
 import org.f17coders.befreshbatch.module.domain.food.Freshness;
-import org.f17coders.befreshbatch.module.domain.food.repository.FoodRepository;
 import org.f17coders.befreshbatch.module.domain.notification.Notification;
-import org.f17coders.befreshbatch.module.domain.notification.service.NotificationService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -32,8 +30,6 @@ public class FoodExpireBatchConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final FoodRepository foodRepository;
-    private final NotificationService notificationService;
     private final EntityManagerFactory emf;
     private final CustomItemWriter customItemWriter;
     private final NotiItemWriter notiItemWriter;
@@ -54,7 +50,7 @@ public class FoodExpireBatchConfig {
             .<Food, Food>chunk(chunkSize, transactionManager)
             .reader(expiredFoodReader())
             .processor(expiredFoodProcessor())
-            .writer(customItemWriter)
+            .writer(customItemWriter)   // TODO : Bulk Insert 고려 필요
             .build();
     }
 
