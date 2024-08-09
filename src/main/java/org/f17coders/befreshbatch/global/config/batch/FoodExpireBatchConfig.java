@@ -12,13 +12,12 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.listener.ExecutionContextPromotionListener;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
-import org.springframework.batch.item.database.builder.JpaItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
@@ -39,14 +38,15 @@ public class FoodExpireBatchConfig {
     private final FoodRepository foodRepository;
     private final NotificationService notificationService;
     private final EntityManagerFactory emf;
+    private final CustomItemWriter customItemWriter;
 
-    private final int chunkSize = 1000; // TODO : Chunk Size 재정의
+    private final int chunkSize = 1000; // TODO : Chunk Size 고민 필요
 
     @Bean
     public Job processExpiredFoodJob() {
         return new JobBuilder("processExpiredFoodJob", jobRepository)
             .start(manageExpiredFoodStep())
-//            .next(sendExpireNotificationStep())
+            .next(sendExpireNotificationStep())   // TODO : Retry, 실패 시 로직 추가 구현 필요
             .build();
     }
 
@@ -56,33 +56,35 @@ public class FoodExpireBatchConfig {
             .<Food, Food>chunk(chunkSize, transactionManager)
             .reader(itemReader())
             .processor(itemProcessor())
-            .writer(itemWriter())
+            .writer(customItemWriter)
+            .listener(promotionListener())
             .build();
     }
 
     @Bean
     public JpaPagingItemReader<Food> itemReader() {
         return new JpaPagingItemReaderBuilder<Food>()
-            .name(BEAN_PREFIX+"Reader")
+            .name(BEAN_PREFIX + "Reader")
             .entityManagerFactory(emf)
             .pageSize(chunkSize)
-            .queryString("SELECT f FROM Food f WHERE f.expirationDate < CURRENT_DATE")
+            .queryString(
+                "SELECT f FROM Food f WHERE f.expirationDate < CURRENT_DATE")  // TODO : DB INDEXING?
             .build();
     }
 
     @Bean
     public ItemProcessor<Food, Food> itemProcessor() {
         return food -> {
-            food.setFreshness(Freshness.BAD);
+            food.setFreshness(Freshness.GOOD);
             return food;
         };
     }
 
     @Bean
-    public JpaItemWriter<Food> itemWriter() {
-        return new JpaItemWriterBuilder<Food>()
-            .entityManagerFactory(emf)
-            .build();
+    public ExecutionContextPromotionListener promotionListener() {
+        ExecutionContextPromotionListener listener = new ExecutionContextPromotionListener();
+        listener.setKeys(new String[]{"foods"}); // 자동으로 승격시킬 키 목록
+        return listener;
     }
 
     @Bean
@@ -92,13 +94,9 @@ public class FoodExpireBatchConfig {
                 ExecutionContext jobExecutionContext = chunkContext.getStepContext()
                     .getStepExecution().getJobExecution().getExecutionContext();
 
-                List<Long> expireFoodIdList = (List<Long>) jobExecutionContext.get(
-                    "expireFoodIdList");
-                log.info("[sendExpireNotificationStep] found expire food size : " + String.valueOf(
-                    expireFoodIdList.size()));
+                List<Long> expireFoodIdList = (List<Long>) jobExecutionContext.get("foods");
 
                 List<Food> expireFoodList = foodRepository.findNotiFood(expireFoodIdList);
-
                 notificationService.sendExpireNotification(expireFoodList, "danger");
 
                 return RepeatStatus.FINISHED;
