@@ -3,15 +3,10 @@ package org.f17coders.befreshbatch.module.domain.notification.service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.f17coders.befreshbatch.module.domain.food.Food;
-import org.f17coders.befreshbatch.module.domain.member.Member;
 import org.f17coders.befreshbatch.module.domain.memberToken.MemberToken;
-import org.f17coders.befreshbatch.module.domain.notification.repository.NotificationRepository;
-import org.f17coders.befreshbatch.module.domain.refrigerator.Refrigerator;
+import org.f17coders.befreshbatch.module.domain.notification.Notification;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -19,44 +14,17 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
-    private final NotificationRepository notificationRepository;
-
     @Override
-    public void sendExpireNotification(List<Food> foodList, String category) {
-        String title = "";
-        String body = "";
-
-        for (Food food : foodList) {
-            title = "[" + food.getName() + "] " + " 유통기한이 지났어요!";
-            body = "주의해서 먹으세요!";
-
-            long notificationId = saveMessage(food.getRefrigerator(), category, title, body);
-            Member member = food.getRefrigerator().getMember();
-
-            for (MemberToken memberToken : member.getMemberTokenSet()) {
-                sendMessage(memberToken, title, body, category, notificationId);
-            }
-        }
-    }
-
-    private long saveMessage(Refrigerator refrigerator, String category, String title,
-        String body) {
-        org.f17coders.befreshbatch.module.domain.notification.Notification notification = org.f17coders.befreshbatch.module.domain.notification.Notification.createNotification(
-            category, title, body, refrigerator);
-        return notificationRepository.save(notification).getId();
-    }
-
-    private void sendMessage(MemberToken memberToken, String title, String body, String category,
-        long notificationId) {
+    public void sendMessage(Notification notification, MemberToken memberToken) {
         Message message = Message.builder()
             .setToken(memberToken.getToken())
-            .setNotification(Notification.builder()
-                .setTitle(title)
-                .setBody(body)
+            .setNotification(com.google.firebase.messaging.Notification.builder()
+                .setTitle(notification.getTitle())
+                .setBody(notification.getMessage())
                 .build()
             )
-            .putData("category", category)
-            .putData("notificationId", String.valueOf(notificationId))
+            .putData("category", notification.getCategory())
+            .putData("notificationId", String.valueOf(notification.getId()))
             .build();
 
         try {

@@ -1,8 +1,8 @@
 package org.f17coders.befreshbatch.module.domain.notification.service;
 
-import java.util.List;
-import org.f17coders.befreshbatch.module.domain.food.Food;
+import org.f17coders.befreshbatch.module.domain.memberToken.MemberToken;
+import org.f17coders.befreshbatch.module.domain.notification.Notification;
 
 public interface NotificationService {
-    void sendExpireNotification(List<Food> foodList, String category);
+    void sendMessage(Notification notification, MemberToken memberToken);
 }
