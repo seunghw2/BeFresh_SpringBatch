@@ -61,7 +61,10 @@ public class FoodExpireBatchConfig {
             .entityManagerFactory(emf)
             .pageSize(chunkSize)
             .queryString(
-                "SELECT f FROM Food f WHERE f.expirationDate < CURRENT_DATE")  // TODO : DB INDEXING?
+                "SELECT f FROM Food f " +
+                    "WHERE f.expirationDate < CURRENT_DATE "
+                + "AND f.freshness != org.f17coders.befreshbatch.module.domain.food.Freshness.BAD"
+            )  // TODO : DB INDEXING?
             .build();
     }
 
