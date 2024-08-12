@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 public class NotificationServiceImpl implements NotificationService {
 
     @Override
-    public void sendMessage(Notification notification, MemberToken memberToken) {
+    public void sendMessage(Notification notification, MemberToken memberToken) throws FirebaseMessagingException {
         Message message = Message.builder()
             .setToken(memberToken.getToken())
             .setNotification(com.google.firebase.messaging.Notification.builder()
@@ -32,6 +32,7 @@ public class NotificationServiceImpl implements NotificationService {
             log.info("[FCM send] " + response);
         } catch (FirebaseMessagingException e) {
             log.info("[FCM except]" + e.getMessage());
+            throw e;
         }
     }
 }

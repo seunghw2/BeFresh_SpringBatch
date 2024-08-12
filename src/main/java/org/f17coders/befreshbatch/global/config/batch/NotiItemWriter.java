@@ -1,5 +1,7 @@
 package org.f17coders.befreshbatch.global.config.batch;
 
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.MessagingErrorCode;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +21,21 @@ public class NotiItemWriter implements ItemWriter<Notification> {
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
 
-    public void write(Chunk<? extends Notification> notifications) throws Exception {
-        notifications.forEach(notification -> {
+    public void write(Chunk<? extends Notification> notifications)
+        throws FirebaseMessagingException {
+        for (Notification notification : notifications) {
             Set<MemberToken> memberTokenSet = notification.getRefrigerator().getMember()
                 .getMemberTokenSet();
-            memberTokenSet.forEach(memberToken -> notificationService.sendMessage(notification, memberToken));
-        });
-
-        notificationRepository.saveAll(notifications);  // TODO : 성공하는 경우에만 저장하도록 변경 필요
+            for (MemberToken memberToken : memberTokenSet) {
+                try {
+                    notificationService.sendMessage(notification, memberToken);
+                } catch (FirebaseMessagingException e) {
+                    if (e.getMessagingErrorCode().equals(MessagingErrorCode.INTERNAL)) {
+                        throw e;
+                    }
+                }
+            }
+        }
+        notificationRepository.saveAll(notifications);
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilde
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.client.HttpServerErrorException.InternalServerError;
 
 @Slf4j
 @Configuration
@@ -40,7 +41,7 @@ public class FoodExpireBatchConfig {
     public Job processExpiredFoodJob() {
         return new JobBuilder("processExpiredFoodJob", jobRepository)
             .start(manageExpiredFoodStep())
-            .next(sendDangerNotificationStep())   // TODO : Retry, 실패 시 로직 추가 구현 필요
+            .next(sendDangerNotificationStep())
             .build();
     }
 
@@ -83,7 +84,8 @@ public class FoodExpireBatchConfig {
             .reader(notiReader())
             .processor(notiProcessor())
             .writer(notiItemWriter)
-            .startLimit(3)
+            .faultTolerant()
+            .retryLimit(5)
             .build();
     }
 
