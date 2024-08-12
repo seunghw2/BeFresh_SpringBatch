@@ -83,6 +83,7 @@ public class FoodExpireBatchConfig {
             .reader(notiReader())
             .processor(notiProcessor())
             .writer(notiItemWriter)
+            .startLimit(3)
             .build();
     }
 
