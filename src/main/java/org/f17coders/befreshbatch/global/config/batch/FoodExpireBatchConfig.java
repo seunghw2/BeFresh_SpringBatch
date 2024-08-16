@@ -108,7 +108,7 @@ public class FoodExpireBatchConfig {
             .faultTolerant()
             .retryLimit(5)
             .retry(InternalServerError.class)
-//            .taskExecutor(simpleTaskExecutor())
+            .taskExecutor(simpleTaskExecutor())
 //            .taskExecutor(threadPoolTaskExecutor())
             .build();
     }
@@ -154,4 +154,20 @@ public class FoodExpireBatchConfig {
             .build();
     }
 
+    @Bean
+    public TaskExecutor simpleTaskExecutor() {
+        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor();
+        taskExecutor.setVirtualThreads(true);
+        return taskExecutor;
+    }
+
+    @Bean
+    public TaskExecutor threadPoolTaskExecutor() {
+        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        taskExecutor.setCorePoolSize(1000); // 동시 실행을 제어하기 위한 설정
+        taskExecutor.setMaxPoolSize(Integer.MAX_VALUE);
+        taskExecutor.setQueueCapacity(25);
+        taskExecutor.initialize();
+        return taskExecutor;
+    }
 }
