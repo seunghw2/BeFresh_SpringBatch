@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class CustomItemWriter implements ItemWriter<Food> {
+public class FoodItemWriter implements ItemWriter<Food> {
 
     private final FoodRepository foodRepository;
 

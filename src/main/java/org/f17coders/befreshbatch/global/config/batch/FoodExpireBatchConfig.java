@@ -1,6 +1,7 @@
 package org.f17coders.befreshbatch.global.config.batch;
 
 import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f17coders.befreshbatch.module.domain.food.Food;
@@ -13,10 +14,18 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.builder.JpaItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.client.HttpServerErrorException.InternalServerError;
 
@@ -32,8 +41,9 @@ public class FoodExpireBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory emf;
-    private final CustomItemWriter customItemWriter;
+    private final FoodItemWriter expireFoodItemWriter;
     private final NotiItemWriter notiItemWriter;
+    private final DataSource dataSource;
 
     private final int chunkSize = 1000; // TODO : Chunk Size 고민 필요
 
@@ -51,7 +61,7 @@ public class FoodExpireBatchConfig {
             .<Food, Food>chunk(chunkSize, transactionManager)
             .reader(expiredFoodReader())
             .processor(expiredFoodProcessor())
-            .writer(customItemWriter)   // TODO : Bulk Insert 고려 필요
+            .writer(expiredFoodWriter())   // TODO : Bulk Insert 고려 필요
             .build();
     }
 
@@ -65,7 +75,7 @@ public class FoodExpireBatchConfig {
                 "SELECT f FROM Food f " +
                     "WHERE f.expirationDate < CURRENT_DATE "
                 + "AND f.freshness != org.f17coders.befreshbatch.module.domain.food.Freshness.BAD"
-            )  // TODO : DB INDEXING?
+            )
             .build();
     }
 
@@ -78,14 +88,28 @@ public class FoodExpireBatchConfig {
     }
 
     @Bean
+    public JdbcBatchItemWriter<Food> expiredFoodWriter() {
+        return new JdbcBatchItemWriterBuilder<Food>()
+            .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+            .sql("UPDATE food SET freshness = 'BAD' WHERE food_id = :id")
+            .dataSource(dataSource)
+            .build();
+    }
+
+    @Bean
     public Step sendDangerNotificationStep() {
         return new StepBuilder("sendDangerNotificationStep", jobRepository)
             .<Food, Notification>chunk(chunkSize, transactionManager)
             .reader(notiReader())
             .processor(notiProcessor())
-            .writer(notiItemWriter)
+            .writer(notiJpaWriter())
+//            .writer(notiJDBCBatchWriter())
+            .listener(new StepTimeListener())  // 시간 측정 Listener 추가
             .faultTolerant()
             .retryLimit(5)
+            .retry(InternalServerError.class)
+//            .taskExecutor(simpleTaskExecutor())
+//            .taskExecutor(threadPoolTaskExecutor())
             .build();
     }
 
@@ -101,7 +125,6 @@ public class FoodExpireBatchConfig {
                     "JOIN FETCH r.member m " +
                     "JOIN FETCH m.memberTokenSet mt " +
                     "WHERE f.freshness = org.f17coders.befreshbatch.module.domain.food.Freshness.BAD")
-            // TODO : DB INDEXING?
             .build();
     }
 
@@ -114,4 +137,21 @@ public class FoodExpireBatchConfig {
                 food.getRefrigerator());
         };
     }
+
+    @Bean
+    public JpaItemWriter<Notification> notiJpaWriter() {
+        return new JpaItemWriterBuilder<Notification>()
+            .entityManagerFactory(emf)
+            .build();
+    }
+
+    @Bean
+    public JdbcBatchItemWriter<Notification> notiJDBCBatchWriter() {
+        return new JdbcBatchItemWriterBuilder<Notification>()
+            .sql("insert into notification (category, title, message, refrigerator_id) values (:category, :title, :message, :refrigerator.id)")
+            .dataSource(dataSource)
+            .beanMapped()
+            .build();
+    }
+
 }

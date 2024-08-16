@@ -26,7 +26,6 @@ public class NotificationServiceImpl implements NotificationService {
             .putData("category", notification.getCategory())
             .putData("notificationId", String.valueOf(notification.getId()))
             .build();
-
         try {
             String response = FirebaseMessaging.getInstance().send(message);
             log.info("[FCM send] " + response);
