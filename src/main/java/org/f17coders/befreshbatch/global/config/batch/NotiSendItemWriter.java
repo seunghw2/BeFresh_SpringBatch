@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f17coders.befreshbatch.module.domain.memberToken.MemberToken;
 import org.f17coders.befreshbatch.module.domain.notification.Notification;
-import org.f17coders.befreshbatch.module.domain.notification.repository.NotificationRepository;
 import org.f17coders.befreshbatch.module.domain.notification.service.NotificationService;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
@@ -16,9 +15,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class NotiItemWriter implements ItemWriter<Notification> {
+public class NotiSendItemWriter implements ItemWriter<Notification> {
 
-    private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
 
     public void write(Chunk<? extends Notification> notifications)
@@ -36,6 +34,5 @@ public class NotiItemWriter implements ItemWriter<Notification> {
                 }
             }
         }
-        notificationRepository.saveAll(notifications);
     }
 }
