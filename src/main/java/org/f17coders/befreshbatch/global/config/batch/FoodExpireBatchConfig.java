@@ -23,11 +23,7 @@ import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilde
 import org.springframework.batch.item.support.CompositeItemWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.web.client.HttpServerErrorException.InternalServerError;
 
 @Slf4j
 @Configuration
@@ -44,7 +40,7 @@ public class FoodExpireBatchConfig {
     private final NotiSendItemWriter notiSendItemWriter;
     private final DataSource dataSource;
 
-    private final int chunkSize = 1000; // TODO : Chunk Size 고민 필요
+    private final int chunkSize = 1000;
 
     @Bean
     public Job processExpiredFoodJob() {
@@ -60,7 +56,7 @@ public class FoodExpireBatchConfig {
             .<Food, Food>chunk(chunkSize, transactionManager)
             .reader(expiredFoodReader())
             .processor(expiredFoodProcessor())
-            .writer(expiredFoodWriter())   // TODO : Bulk Insert 고려 필요
+            .writer(expiredFoodWriter())
             .build();
     }
 
@@ -103,11 +99,9 @@ public class FoodExpireBatchConfig {
             .processor(notiProcessor())
             .writer(notiCompositeItemWriter())
             .listener(new StepTimeListener())  // 시간 측정 Listener 추가
-            .faultTolerant()
-            .retryLimit(5)
-            .retry(InternalServerError.class)
-            .taskExecutor(simpleTaskExecutor())
-//            .taskExecutor(threadPoolTaskExecutor())
+//            .faultTolerant()
+//            .retryLimit(5)
+//            .retry(InternalServerError.class)
             .build();
     }
 
@@ -152,22 +146,5 @@ public class FoodExpireBatchConfig {
             .dataSource(dataSource)
             .beanMapped()
             .build();
-    }
-
-    @Bean
-    public TaskExecutor simpleTaskExecutor() {
-        SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor();
-        taskExecutor.setVirtualThreads(true);
-        return taskExecutor;
-    }
-
-    @Bean
-    public TaskExecutor threadPoolTaskExecutor() {
-        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-        taskExecutor.setCorePoolSize(1000); // 동시 실행을 제어하기 위한 설정
-        taskExecutor.setMaxPoolSize(Integer.MAX_VALUE);
-        taskExecutor.setQueueCapacity(25);
-        taskExecutor.initialize();
-        return taskExecutor;
     }
 }

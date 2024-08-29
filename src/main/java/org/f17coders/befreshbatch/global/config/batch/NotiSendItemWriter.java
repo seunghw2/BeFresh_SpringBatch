@@ -31,6 +31,8 @@ public class NotiSendItemWriter implements ItemWriter<Notification> {
                     if (e.getMessagingErrorCode().equals(MessagingErrorCode.INTERNAL)) {
                         throw e;
                     }
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
