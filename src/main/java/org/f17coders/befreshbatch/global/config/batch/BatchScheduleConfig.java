@@ -19,8 +19,8 @@ public class BatchScheduleConfig {
     private final JobLauncher jobLauncher;
     private final Job processExpiredFoodJob;
 
-    //    @Scheduled(cron = "0 0 9 * * ?") // 매일 오전 9시에 실행
-    @Scheduled(cron = "0 0/1 * * * ?") // 매 1분마다 실행
+        @Scheduled(cron = "0 0 9 * * ?") // 매일 오전 9시에 실행
+//    @Scheduled(fixedDelay = 600000)
     public void runExpiredFoodJob() {
         runJob(processExpiredFoodJob, "processExpiredFoodJob");
     }

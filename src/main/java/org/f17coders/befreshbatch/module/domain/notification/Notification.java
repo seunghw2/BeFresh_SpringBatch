@@ -33,6 +33,8 @@ public class Notification {
     @Column(nullable = false, length = 300)
     private String message;
 
+    private Boolean isSent;
+
     @ManyToOne
     @JoinColumn(name = "refrigerator_id", nullable = false)
     private Refrigerator refrigerator;

@@ -1,7 +1,6 @@
 package org.f17coders.befreshbatch.global.config.batch;
 
 import jakarta.persistence.EntityManagerFactory;
-import java.util.Arrays;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,6 @@ import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
-import org.springframework.batch.item.support.CompositeItemWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -37,7 +35,7 @@ public class FoodExpireBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory emf;
-    private final NotiSendItemWriter notiSendItemWriter;
+    private final AsyncNotiItemWriter asyncNotiItemWriter;
     private final DataSource dataSource;
 
     private final int chunkSize = 1000;
@@ -97,11 +95,8 @@ public class FoodExpireBatchConfig {
             .<Food, Notification>chunk(chunkSize, transactionManager)
             .reader(notiReader())
             .processor(notiProcessor())
-            .writer(notiCompositeItemWriter())
+            .writer(asyncNotiItemWriter)
             .listener(new StepTimeListener())  // 시간 측정 Listener 추가
-//            .faultTolerant()
-//            .retryLimit(5)
-//            .retry(InternalServerError.class)
             .build();
     }
 
@@ -128,23 +123,5 @@ public class FoodExpireBatchConfig {
             return Notification.createNotification("danger", title, body,
                 food.getRefrigerator());
         };
-    }
-
-    @Bean
-    public CompositeItemWriter<Notification> notiCompositeItemWriter() {
-        final CompositeItemWriter<Notification> compositeItemWriter = new CompositeItemWriter<>();
-        compositeItemWriter.setDelegates(
-            Arrays.asList(notiSendItemWriter, notiJDBCBatchWriter())); // Writer 등록
-        return compositeItemWriter;
-    }
-
-    @Bean
-    public JdbcBatchItemWriter<Notification> notiJDBCBatchWriter() {
-        return new JdbcBatchItemWriterBuilder<Notification>()
-            .sql(
-                "insert into notification (category, title, message, refrigerator_id) values (:category, :title, :message, :refrigerator.id)")
-            .dataSource(dataSource)
-            .beanMapped()
-            .build();
     }
 }
