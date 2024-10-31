@@ -31,17 +31,28 @@ public class NotificationServiceImpl implements NotificationService {
             .putData("notificationId", String.valueOf(notification.getId()))
             .build();
 
-        try {
-            String response = FirebaseMessaging.getInstance().send(message);
 
-            log.info("[FCM send] " + response);
+        int maxRetries = 1;
+        int attempt = 0;
 
-            notification.setIsSent(true);
-            return CompletableFuture.completedFuture(null);
-        } catch (FirebaseMessagingException e) {
+        while (attempt < maxRetries) {
+            try {
+                String response = FirebaseMessaging.getInstance().send(message);
 
-            notification.setIsSent(false);
-            return CompletableFuture.completedFuture(null);
+                log.info("[FCM send] " + response);
+
+                notification.setIsSent(true);
+                return CompletableFuture.completedFuture(null);
+            } catch (FirebaseMessagingException e) {
+
+                attempt++;
+//                log.error("[FCM send failed] Attempt {} of {}", attempt, maxRetries);
+
+                if (attempt >= maxRetries) {
+                    notification.setIsSent(false);
+                    return CompletableFuture.completedFuture(null);
+                }
+            }
         }
 
         return CompletableFuture.completedFuture(null);
